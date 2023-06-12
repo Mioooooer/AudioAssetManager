@@ -1,0 +1,25 @@
+[
+    {
+        "AppVer": "1.0.0",
+
+        "SaveTag": [
+            {"TagName": "Title"},
+            {"TagName": "ModifiedDate"},
+            {"TagName": "CheckinDate"},
+            {"TagName": "IsInClient"},
+            {"TagName": "CopyrightOwnership"},
+            {"TagName": "BPM"},
+            {"TagName": "ModifiedDate"}
+        ],
+        
+        "SearchTag": [
+            {"TagName": "Title"},
+            {"TagName": "ModifiedDate"},
+            {"TagName": "CheckinDate"},
+            {"TagName": "IsInClient"},
+            {"TagName": "CopyrightOwnership"},
+            {"TagName": "BPM"},
+            {"TagName": "ModifiedDate"}
+        ]
+    }
+]
