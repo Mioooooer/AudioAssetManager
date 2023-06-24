@@ -1,3 +1,4 @@
 # AudioAssetManager
-AudioAssetManager
-Only metadata tool now
+AudioAssetManager  
+For no server usage now  
+Assets stored in cloud drive
