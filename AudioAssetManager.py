@@ -1,6 +1,9 @@
 #import whisper
 import sys
 from PySide6.QtWidgets import QWidget, QApplication, QLineEdit, QMainWindow, QTextBrowser, QPushButton, QMenu, QListWidget, QTableWidget, QHeaderView, QAbstractItemView, QTableWidgetItem, QCheckBox
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtCore import QUrl, Slot
+#from PySide6.QtMultimedia import QMediaFormat
 import os
 import difflib
 import openpyxl
@@ -14,7 +17,7 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.text = ""  # ==> 默认文本内容
-        self.AppVer = "1.0.0"
+        self.AppVer = "1.2.0"
         self.setWindowTitle('AudioAssetManager'+' Ver '+self.AppVer)  # ==> 窗口标题
         self.resize(1280, 720)  # ==> 定义窗口大小
         self.textBrowser = QTextBrowser()
@@ -30,7 +33,7 @@ class Window(QMainWindow):
         self.audiopath = []
         #self.gate = '0.9'
         #//self.TagToProcess = []
-        self.StorePath = '//xxxxxx/xxxxx/xxxxxxx/'
+        self.StorePath = '//xxxxx/xxxxx/xxxxx/'
         self.ConfigJsonPath = 'config.json'
         self.AssetJsonPath = 'AudioAssetData.json'
         self.TagInputWidgetList = []
@@ -38,6 +41,17 @@ class Window(QMainWindow):
         self.SearchList = []
         self.SearchGate = 0.7
         self.initUI()
+        #init player
+        self.player = QMediaPlayer()
+        self.audioOutput = QAudioOutput() # 不能实例化为临时变量，否则被自动回收导致无法播放
+        self.player.setAudioOutput(self.audioOutput)
+        #self.player.positionChanged.connect(self.positionChanged)
+        #self.player.durationChanged.connect(self.durationChanged)
+        #self.player.playbackStateChanged.connect(self.stateChanged)
+        #self.player.errorOccurred.connect(self._player_error)
+        # Qt6中`QMediaPlayer.setVolume`已被移除，使用`QAudioOutput.setVolume`替代
+        self.audioOutput.setVolume(1)
+        #end init player
 
     # 鼠标拖入事件
     def dragEnterEvent(self, event):
@@ -159,14 +173,24 @@ class Window(QMainWindow):
         SearchAssetBtn.move(210, 370)
         SearchAssetBtn.clicked[bool].connect(self.displaySearchAsset)
 
-        CheckinAssetBtn = QPushButton('modified', self)
-        CheckinAssetBtn.setCheckable(True)
-        CheckinAssetBtn.move(10, 520)
-        CheckinAssetBtn.clicked[bool].connect(self.modifiedAsset)
-                
+        ModifyAssetBtn = QPushButton('modify', self)
+        ModifyAssetBtn.setCheckable(True)
+        ModifyAssetBtn.move(10, 520)
+        ModifyAssetBtn.clicked[bool].connect(self.modifiedAsset)
+
+        DownloadAssetBtn = QPushButton('download', self)
+        DownloadAssetBtn.setCheckable(True)
+        DownloadAssetBtn.move(310, 370)
+        DownloadAssetBtn.clicked[bool].connect(self.downloadAsset)
+
+        playAssetBtn = QPushButton('play/stop', self)
+        playAssetBtn.setCheckable(True)
+        playAssetBtn.move(410, 370)
+        playAssetBtn.clicked[bool].connect(self.playAsset)
+
         SearchAssetBtn = QPushButton('delete', self)
         SearchAssetBtn.setCheckable(True)
-        SearchAssetBtn.move(210, 520)
+        SearchAssetBtn.move(610, 520)
         SearchAssetBtn.clicked[bool].connect(self.deleteAsset)
 
 
@@ -268,6 +292,68 @@ class Window(QMainWindow):
         #-------------------------------------------------------------------------------
         with open(jsonfilepath, 'w', encoding='utf-8') as r:
             json.dump(self.AudioAssetDataJson, r, ensure_ascii=False)
+
+
+    def downloadAsset(self, pressed):
+        #-------------------------------------------------------------------------------
+        #self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[0])
+        #print(self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[0]))#this is index
+        for idx in range(0, len(self.SearchCheckList)):
+            if self.SearchCheckList[idx].isChecked():
+                #currentIdx = self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[idx])
+                #---copy file to app's folder------------------------------------------------------------------------------------
+                actualpath = self.displayAssetList[idx]['ActualFilePath']
+                fileName = self.displayAssetList[idx]['FileName']
+                self.copyFile(self.StorePath + actualpath +'/'+ fileName, './')
+                #----------------------------------------------------------------------------------------------------------------
+
+
+    def playAsset(self, pressed):
+        #-------------------------------------------------------------------------------
+        #self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[0])
+        #print(self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[0]))#this is index
+        if pressed:
+            for idx in range(0, len(self.SearchCheckList)):
+                if self.SearchCheckList[idx].isChecked():
+                    #currentIdx = self.AudioAssetDataJson[1].get('AssetList').index(self.displayAssetList[idx])
+                    #---copy file to app's folder------------------------------------------------------------------------------------
+                    actualpath = self.displayAssetList[idx]['ActualFilePath']
+                    fileName = self.displayAssetList[idx]['FileName']
+                    self.copyFile(self.StorePath + actualpath +'/'+ fileName, './AudioAssetManagerTempFolder')#copy to temp folder
+                    self.play('./AudioAssetManagerTempFolder' +'/'+ fileName)
+                    break#just play the first checked audio and then break the loop
+                    #----------------------------------------------------------------------------------------------------------------
+        else:
+            self.stop()
+            self.player.setSource(QUrl.fromLocalFile(''))#release source
+            shutil.rmtree('./AudioAssetManagerTempFolder')#delete temp folder
+
+
+    def play(self, filepath):
+        # `QMediaPlayer.setMedia` 方法已从Qt6中移除，使用`.setSource`
+        self.player.setSource(QUrl.fromLocalFile(filepath))
+        #self.player.setSource(filepath)
+        self.player.play()
+    
+    def stop(self):
+        self.player.stop()
+
+    #@Slot()
+    def positionChanged(self, position):
+        print(f'positionChanged: {position}')
+
+    #@Slot()
+    def durationChanged(self, duration):
+        print(f'durationChanged: {duration}')
+
+    #@Slot()
+    def stateChanged(self, state):
+        print(f'stateChanged: {state}')
+
+    #@Slot()
+    def _player_error(self, error, error_string):
+        print(error, error_string)
+
 
 
 
