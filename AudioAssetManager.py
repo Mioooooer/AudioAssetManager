@@ -11,13 +11,14 @@ import openpyxl
 import taglib
 import json
 import shutil
+import subprocess
 
 
 class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.text = ""  # ==> 默认文本内容
-        self.AppVer = "1.2.0"
+        self.AppVer = "1.3.1"
         self.setWindowTitle('AudioAssetManager'+' Ver '+self.AppVer)  # ==> 窗口标题
         self.resize(1280, 720)  # ==> 定义窗口大小
         self.textBrowser = QTextBrowser()
@@ -286,9 +287,19 @@ class Window(QMainWindow):
                 fileName = self.AudioAssetDataJson[1].get('AssetList')[currentIdx]['FileName']
                 if actualpath != storefilepath:
                     self.AudioAssetDataJson[1].get('AssetList')[currentIdx]['ActualFilePath'] = storefilepath
-                    self.copyFile(self.StorePath + actualpath +'/'+ fileName, self.StorePath + storefilepath)
-                    os.remove(self.StorePath + actualpath +'/'+ fileName)
+                    if os.path.isdir(self.StorePath + actualpath +'/'+ fileName):
+                        if os.path.exists(self.StorePath + storefilepath +'/'+ fileName):
+                            if os.path.exists(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName)):
+                                shutil.rmtree(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName))
+                            shutil.copytree(self.StorePath + storefilepath +'/'+ fileName, self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName))
+                            shutil.rmtree(self.StorePath + storefilepath +'/'+ fileName)
+                        shutil.copytree(self.StorePath + actualpath +'/'+ fileName, self.StorePath + storefilepath +'/'+ fileName)
+                        shutil.rmtree(self.StorePath + actualpath +'/'+ fileName)
+                    else:
+                        self.copyFile(self.StorePath + actualpath +'/'+ fileName, self.StorePath + storefilepath)
+                        os.remove(self.StorePath + actualpath +'/'+ fileName)
                 #----------------------------------------------------------------------------------------------------------------
+                self.textBrowser.setText('modify '+ fileName)
         #-------------------------------------------------------------------------------
         with open(jsonfilepath, 'w', encoding='utf-8') as r:
             json.dump(self.AudioAssetDataJson, r, ensure_ascii=False)
@@ -304,7 +315,11 @@ class Window(QMainWindow):
                 #---copy file to app's folder------------------------------------------------------------------------------------
                 actualpath = self.displayAssetList[idx]['ActualFilePath']
                 fileName = self.displayAssetList[idx]['FileName']
-                self.copyFile(self.StorePath + actualpath +'/'+ fileName, './')
+                if os.path.isdir(self.StorePath + actualpath +'/'+ fileName):
+                    #os.system(self.StorePath + actualpath +'/'+ fileName)
+                    subprocess.run(['explorer',os.path.realpath(self.StorePath + actualpath +'/'+ fileName)])
+                else:
+                    self.copyFile(self.StorePath + actualpath +'/'+ fileName, './')
                 #----------------------------------------------------------------------------------------------------------------
 
 
@@ -319,8 +334,12 @@ class Window(QMainWindow):
                     #---copy file to app's folder------------------------------------------------------------------------------------
                     actualpath = self.displayAssetList[idx]['ActualFilePath']
                     fileName = self.displayAssetList[idx]['FileName']
-                    self.copyFile(self.StorePath + actualpath +'/'+ fileName, './AudioAssetManagerTempFolder')#copy to temp folder
-                    self.play('./AudioAssetManagerTempFolder' +'/'+ fileName)
+                    if os.path.isdir(self.StorePath + actualpath +'/'+ fileName):
+                        #os.system(self.StorePath + actualpath +'/'+ fileName)
+                        subprocess.run(['explorer',os.path.realpath(self.StorePath + actualpath +'/'+ fileName)])
+                    else:
+                        self.copyFile(self.StorePath + actualpath +'/'+ fileName, './AudioAssetManagerTempFolder')#copy to temp folder
+                        self.play('./AudioAssetManagerTempFolder' +'/'+ fileName)
                     break#just play the first checked audio and then break the loop
                     #----------------------------------------------------------------------------------------------------------------
         else:
@@ -373,9 +392,16 @@ class Window(QMainWindow):
                 #---move file to temp folder in case miss delete-----------------------------------------------------------------
                 actualpath = self.displayAssetList[idx]['ActualFilePath']
                 fileName = self.displayAssetList[idx]['FileName']
-                self.copyFile(self.StorePath + actualpath +'/'+ fileName, self.StorePath + 'TrashBinForAudioAssetManager')
-                os.remove(self.StorePath + actualpath +'/'+ fileName)
+                if os.path.isdir(self.StorePath + actualpath +'/'+ fileName):
+                    if os.path.exists(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName)):
+                        shutil.rmtree(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName))
+                    shutil.copytree(self.StorePath + actualpath +'/'+ fileName, self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(fileName))
+                    shutil.rmtree(self.StorePath + actualpath +'/'+ fileName)
+                else:
+                    self.copyFile(self.StorePath + actualpath +'/'+ fileName, self.StorePath + 'TrashBinForAudioAssetManager')
+                    os.remove(self.StorePath + actualpath +'/'+ fileName)
                 #----------------------------------------------------------------------------------------------------------------
+                self.textBrowser.setText('deleted '+ fileName)
         #-------------------------------------------------------------------------------
         with open(jsonfilepath, 'w', encoding='utf-8') as r:
             json.dump(self.AudioAssetDataJson, r, ensure_ascii=False)
@@ -467,7 +493,10 @@ class Window(QMainWindow):
         for filepath in self.audiopath:
             tempdir = self.updateJson(filepath)
             copydir = self.StorePath + tempdir
-            self.copyFile(filepath, copydir)
+            if os.path.isdir(filepath):
+                self.copyFolder(filepath, os.path.join(copydir,os.path.basename(filepath)))
+            else:
+                self.copyFile(filepath, copydir)
             self.text += filepath + '->' + copydir + '\n'
 
         self.text += 'completed :)'
@@ -478,6 +507,16 @@ class Window(QMainWindow):
         if not os.path.exists(dir):
             os.makedirs(dir)
         shutil.copy2(src, dir)
+
+    def copyFolder(self, src, dir):
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        if os.path.exists(dir):
+            if os.path.exists(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(dir)):
+                shutil.rmtree(self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(dir))
+            shutil.copytree(dir, self.StorePath + 'TrashBinForAudioAssetManager'+'/'+os.path.basename(dir))
+            shutil.rmtree(dir)
+        shutil.copytree(src, dir)
 
     def updateJson(self, actualfilepath):
         jsonfilepath = self.StorePath + self.AssetJsonPath
