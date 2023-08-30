@@ -18,7 +18,7 @@ class Window(QMainWindow):
     def __init__(self):
         super(Window, self).__init__()
         self.text = ""  # ==> 默认文本内容
-        self.AppVer = "1.3.1"
+        self.AppVer = "1.3.3"
         self.setWindowTitle('AudioAssetManager'+' Ver '+self.AppVer)  # ==> 窗口标题
         self.resize(1280, 720)  # ==> 定义窗口大小
         self.textBrowser = QTextBrowser()
@@ -465,13 +465,17 @@ class Window(QMainWindow):
             if self.jsonContent[0].get('SaveTag')[idx].get('ComboBox') != 'True':
                 if self.TagInputWidgetList[idx].text() != '':
                     searchContent = self.TagInputWidgetList[idx].text()
-                    jsonContent = asset.get(self.jsonContent[0].get('SaveTag')[idx].get('TagName'))
-                    if jsonContent != None and jsonContent != '':
-                        tempSearchGroup2 = []
-                        for asset in tempSearchGroup:
-                            if self.compareContent(searchContent, jsonContent):
+                    tempSearchGroup2 = []
+                    for asset in tempSearchGroup:
+                        assetContent = asset.get(self.jsonContent[0].get('SaveTag')[idx].get('TagName'))
+                        print(self.jsonContent[0].get('SaveTag')[idx].get('TagName'))
+                        if assetContent != None and assetContent != '':
+                            print(asset)
+                            print(assetContent)
+                            print(self.compareContent(searchContent, assetContent))
+                            if self.compareContent(searchContent, assetContent):
                                 tempSearchGroup2.append(asset)
-                        tempSearchGroup = tempSearchGroup2
+                    tempSearchGroup = tempSearchGroup2
         return tempSearchGroup
 
 
